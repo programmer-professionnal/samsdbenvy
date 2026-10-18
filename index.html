@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#1a237e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>RevoRP SAMS - Sistema de Atención Médica</title>
+<title>SAMS Envy RP - Sistema de Atención Médica</title>
 <style>
 
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -580,7 +580,7 @@ body { background: var(--bg); color: var(--text); }
 <body>
 
 <header id="mainHeader">
-  <h1>&#x1fa7a; SAMU <span>| Sistema de Atención Médica</span></h1>
+  <h1>&#x1fa7a; SAMS <span>| Envy RP</span></h1>
   <div class="user-info" id="headerUserInfo">
     <span id="headerUserName"></span>
     <button class="btn-notif hidden" id="btnNotifications" onclick="showNotificationPanel()" title="Notificaciones">&#x1f514;<span class="notif-badge hidden" id="notifBadge">0</span></button>
@@ -1170,7 +1170,7 @@ function setLoggedInUI(doc) {
     updateNotifBadge();
     var urgent = checkNotifications().filter(function(n) { return n.urgent; });
     if (urgent.length > 0) {
-      sendBrowserNotif('SAMU - ' + urgent.length + ' notificaci\u00f3n' + (urgent.length > 1 ? 'es' : '') + ' urgente' + (urgent.length > 1 ? 's' : ''), urgent[0].msg);
+      sendBrowserNotif('SAMS - ' + urgent.length + ' notificaci\u00f3n' + (urgent.length > 1 ? 'es' : '') + ' urgente' + (urgent.length > 1 ? 's' : ''), urgent[0].msg);
     }
   }, 500);
   // Force protocol confirmation on login
@@ -2394,7 +2394,7 @@ function showInternalNotes() {
   var content = data.internalNotes || '';
   const html =
     '<p style="color:#666;font-size:0.85em;margin-bottom:12px;">Notas compartidas entre todos los médicos. útil para protocolos, procedimientos o recordatorios.</p>' +
-    '<textarea id="fInternalNotes" style="width:100%;min-height:300px;padding:12px;border:1px solid #ddd;border-radius:6px;font-size:0.95em;font-family:monospace;line-height:1.6;" placeholder="Escriba notas internas, protocolos o procedimientos SAMU aquí...">' + escHtml(content) + '</textarea>';
+    '<textarea id="fInternalNotes" style="width:100%;min-height:300px;padding:12px;border:1px solid #ddd;border-radius:6px;font-size:0.95em;font-family:monospace;line-height:1.6;" placeholder="Escriba notas internas, protocolos o procedimientos SAMS aquí...">' + escHtml(content) + '</textarea>';
   openModal('&#x1f4dd; Notas internas / Protocolos', html, function() { saveInternalNotes(); });
   document.getElementById('modalSaveBtn').textContent = 'Guardar notas';
 }
@@ -2454,7 +2454,7 @@ function printPatientRecord() {
   win.document.write('<div class="meta"><strong>DNI:</strong> ' + escHtml(p.citizenNumber) + ' | <strong>FN:</strong> ' + escHtml(p.dateOfBirth || '-') + ' | <strong>Tel:</strong> ' + escHtml(p.phone || '-') + ' | <strong>Dir:</strong> ' + escHtml(p.address || '-') + '</div>');
   win.document.write(allergiesHtml + chronicHtml);
   win.document.write(diagnosesHtml + prescriptionsHtml + appointmentsHtml);
-  win.document.write('<p style="margin-top:40px;color:#999;font-size:0.8em;border-top:1px solid #eee;padding-top:10px;">Generado desde SAMU RevoRP · ' + new Date().toLocaleString() + '</p>');
+  win.document.write('<p style="margin-top:40px;color:#999;font-size:0.8em;border-top:1px solid #eee;padding-top:10px;">Generado desde SAMS Envy RP · ' + new Date().toLocaleString() + '</p>');
   win.document.write('</body></html>');
   win.document.close();
   win.print();
@@ -2608,7 +2608,7 @@ function showProtocols(onConfirm) {
       '<p style="margin:0 0 8px;font-size:0.85em;color:#2e7d32;"><strong>Debe confirmar que ha leído y comprendido los protocolos para acceder al sistema.</strong></p>' +
       '<button class="btn-add" onclick="confirmProtocols()" style="padding:8px 24px;">&#x2714; Confirmar lectura</button></div>';
   }
-  openModal('&#x1fa7a; Protocolos de tratamiento SAMU', html, editable ? function() { saveProtocols(); } : null);
+  openModal('&#x1fa7a; Protocolos de tratamiento SAMS', html, editable ? function() { saveProtocols(); } : null);
   if (editable) {
     document.getElementById('modalSaveBtn').textContent = 'Guardar protocolos';
   } else {
@@ -2890,7 +2890,7 @@ function exportData() {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'samu_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = 'sams_envy_backup_' + new Date().toISOString().slice(0, 10) + '.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -3515,7 +3515,7 @@ function ensureProtocolConfirmed() {
     return c.doctorId === currentDoctor.id && c.lastUpdate === data.lastProtocolUpdate;
   });
   if (confirmed) return true;
-  if (confirm('\u00bfHa le\u00eddo y comprendido los protocolos de tratamiento SAMU?\n\nDebe confirmar para continuar.')) {
+  if (confirm('\u00bfHa le\u00eddo y comprendido los protocolos de tratamiento SAMS?\n\nDebe confirmar para continuar.')) {
     data.protocolConfirmations.push({
       doctorId: currentDoctor.id,
       doctorName: currentDoctor.name,
@@ -3575,7 +3575,7 @@ function exportPatientPDF(id) {
       content += '<div class="section" style="border-left-color:#c62828;"><span class="date">' + escHtml(r.date) + ' ' + escHtml(r.time || '') + '</span> · <strong>' + escHtml(r.type) + '</strong> (' + (r.triage || 'N/A').toUpperCase() + ')<br>' + escHtml(r.description.substring(0, 150)) + (r.outcome ? '<br><strong>Estado final:</strong> ' + escHtml(r.outcome) : '') + '</div>';
     });
   }
-  content += '<div class="footer">Generado desde SAMU RevoRP · ' + new Date().toLocaleString() + '</div>';
+  content += '<div class="footer">Generado desde SAMS Envy RP · ' + new Date().toLocaleString() + '</div>';
   content += '</body></html>';
   win.document.write(content);
   win.document.close();
@@ -4667,7 +4667,7 @@ function printPrescription(idx) {
   var win = window.open('', '_blank');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receta Médica</title><style>body{font-family:Georgia,serif;padding:40px;color:#333;max-width:700px;margin:0 auto;}h1{text-align:center;font-size:1.2em;color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:8px;}h2{text-align:center;font-size:0.9em;color:#666;font-weight:400;margin-bottom:30px;}.rx-box{border:2px dashed #333;padding:24px;margin:24px 0;border-radius:8px;}.rx-med{font-size:1.3em;font-weight:700;margin-bottom:6px;}.rx-dose{font-size:1em;color:#555;margin-bottom:4px;}.rx-instr{font-size:0.95em;color:#333;margin-top:8px;}.rx-meta{font-size:0.85em;color:#999;margin-top:20px;border-top:1px solid #eee;padding-top:10px;}.rx-footer{display:flex;justify-content:space-between;margin-top:40px;font-size:0.85em;}.rx-sign{text-align:right;margin-top:30px;}.rx-signature{font-family:\'Brush Script MT\',cursive,\'Segoe Script\',\'Pacifico\',sans-serif;font-size:1.4em;color:#1a237e;}@media print{body{padding:20px;}}</style></head><body>');
   win.document.write('<h1>RECETA MÉDICA</h1>');
-  win.document.write('<h2>SAMU RevoRP - Sistema de Atención Médica</h2>');
+  win.document.write('<h2>SAMS Envy RP - Sistema de Atención Médica</h2>');
   win.document.write('<div class="rx-meta"><strong>Paciente:</strong> ' + escHtml(p.firstName + ' ' + p.lastName) + ' | <strong>DNI:</strong> ' + escHtml(p.citizenNumber) + ' | <strong>Fecha:</strong> ' + escHtml(r.date) + '</div>');
   win.document.write('<div class="rx-box">');
   win.document.write('<div class="rx-med">' + escHtml(r.medication) + '</div>');
@@ -5121,7 +5121,7 @@ function printDischargeSummary(id) {
   if (s.derivation) win.document.write('<div class="section"><h2>Derivación</h2><p>' + escHtml(s.derivation) + '</p></div>');
    if (s.signedConsent) win.document.write('<div class="signature"><strong>Firma digital:</strong> ' + escHtml(s.signedConsent.doctor) + ' - ' + s.signedConsent.date.split('T')[0] + '</div>');
    if (s.coSignedConsent) win.document.write('<div class="signature"><strong>Co-firmado por:</strong> ' + escHtml(s.coSignedConsent.doctor) + ' - ' + s.coSignedConsent.date.split('T')[0] + '</div>');
-  win.document.write('<p style="margin-top:40px;color:#999;font-size:0.8em;border-top:1px solid #eee;padding-top:10px;">SAMU RevoRP - Sistema de Atención Médica</p>');
+  win.document.write('<p style="margin-top:40px;color:#999;font-size:0.8em;border-top:1px solid #eee;padding-top:10px;">SAMS Envy RP - Sistema de Atención Médica</p>');
   win.document.write('</body></html>');
   win.document.close();
   win.print();
@@ -5189,7 +5189,7 @@ function printEmergencyReport(id) {
     win.document.write('<div class="section"><h2>Observaciones</h2><p>' + escHtml(report.observations) + '</p></div>');
   }
   
-  win.document.write('<p style="margin-top:40px;color:#999;font-size:0.8em;border-top:1px solid #eee;padding-top:10px;">SAMU RevoRP - Sistema de Atención Médica</p>');
+  win.document.write('<p style="margin-top:40px;color:#999;font-size:0.8em;border-top:1px solid #eee;padding-top:10px;">SAMS Envy RP - Sistema de Atención Médica</p>');
   win.document.write('</body></html>');
   win.document.close();
   win.print();
@@ -5380,7 +5380,7 @@ function printDeathCertificate(id) {
   var win = window.open('', '_blank');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Certificado de Defunción</title><style>body{font-family:serif;padding:40px;color:#333;}h1{text-align:center;font-size:1.4em;border-bottom:3px double #333;padding-bottom:10px;}h2{text-align:center;font-size:1em;color:#555;}.data{margin:20px 0;}.row{margin:6px 0;}.label{font-weight:600;}.signature{margin-top:40px;display:flex;justify-content:space-between;}@media print{body{padding:20px;}}</style></head><body>');
   win.document.write('<h1>CERTIFICADO DE DEFUNCIÓN</h1>');
-  win.document.write('<h2>SAMU RevoRP · Sistema de Atención Médica</h2>');
+  win.document.write('<h2>SAMS Envy RP · Sistema de Atención Médica</h2>');
   win.document.write('<hr>');
   win.document.write('<div class="data">');
   win.document.write('<div class="row"><span class="label">Paciente:</span> ' + pName + '</div>');
@@ -5952,7 +5952,7 @@ function filterGlobalSearch() {
 // ===== TUTORIAL INTERACTIVO PRIMER LOGIN =====
 function showFirstLoginTutorial() {
   var steps = [
-    { title: '&#x1f44b; Bienvenido a SAMU RevoRP', text: 'Este sistema le permite gestionar pacientes, emergencias, recetas y más. Le mostraremos las funciones principales.' },
+    { title: '&#x1f44b; Bienvenido a SAMS Envy RP', text: 'Este sistema le permite gestionar pacientes, emergencias, recetas y más. Le mostraremos las funciones principales.' },
     { title: '&#x1f465; Pacientes', text: 'Use la barra de búsqueda para encontrar pacientes por nombre, apellido o DNI. Haga clic en "Ver" para abrir el expediente completo.' },
     { title: '&#x1f691; Emergencias', text: 'Registre informes de emergencia con triaje (rojo/amarillo/verde), signos vitales y derivación.' },
     { title: '&#x1f4c5; Agenda y Guardias', text: 'Gestione citas de pacientes y vea el calendario de médicos de guardia.' },
@@ -6120,14 +6120,14 @@ function printNursingNote(idx) {
   var win = window.open('', '_blank');
   win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Nota de Enfermería</title><style>body{font-family:Georgia,serif;padding:40px;color:#333;max-width:700px;margin:0 auto;}h1{text-align:center;font-size:1.3em;color:#00695c;border-bottom:2px solid #00695c;padding-bottom:8px;}h2{text-align:center;font-size:0.9em;color:#666;font-weight:400;margin-bottom:30px;}.meta{font-size:0.85em;color:#999;margin-bottom:20px;}.section{margin:16px 0;}.section strong{color:#00695c;}.signature{margin-top:30px;padding-top:15px;border-top:1px solid #eee;font-size:0.85em;color:#555;}.footer{margin-top:40px;text-align:center;font-size:0.8em;color:#aaa;border-top:1px solid #eee;padding-top:10px;}@media print{body{padding:20px;}}</style></head><body>');
   win.document.write('<h1>NOTA DE ENFERMERÍA</h1>');
-  win.document.write('<h2>SAMU RevoRP - Sistema de Atención Médica</h2>');
+  win.document.write('<h2>SAMS Envy RP - Sistema de Atención Médica</h2>');
   win.document.write('<div class="meta"><strong>Paciente:</strong> ' + escHtml(p.firstName + ' ' + p.lastName) + ' | <strong>DNI:</strong> ' + escHtml(p.citizenNumber) + ' | <strong>Fecha:</strong> ' + escHtml(n.date) + '</div>');
   win.document.write('<div class="section"><strong>Observaciones:</strong><br>' + escHtml(n.observation) + '</div>');
   if (n.plan) win.document.write('<div class="section"><strong>Plan de cuidados:</strong><br>' + escHtml(n.plan) + '</div>');
   win.document.write('<div class="signature"><strong>Enfermero/a:</strong> ' + escHtml(n.nurse) + '</div>');
   if (n.signed) win.document.write('<div class="signature"><strong>&#x2714; Firmado digitalmente por:</strong> ' + escHtml(n.nurse) + '</div>');
   if (n.coSignedConsent) win.document.write('<div class="signature"><strong>&#x2714; Co-firmado por:</strong> ' + escHtml(n.coSignedConsent.doctor) + ' - ' + n.coSignedConsent.date.split('T')[0] + '</div>');
-  win.document.write('<div class="footer">Documento generado por SAMU RevoRP</div>');
+  win.document.write('<div class="footer">Documento generado por SAMS Envy RP</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.print();
@@ -6748,7 +6748,7 @@ function printFullRecord() {
     discharges.forEach(function(s) { win.document.write('<div class="item"><span class="label">' + escHtml(s.date) + '</span> · <strong>' + escHtml(s.diagnosis) + '</strong>' + (s.derivation ? '<br><strong>Derivación:</strong> ' + escHtml(s.derivation) : '') + '</div>'); });
     win.document.write('</div>');
   }
-  win.document.write('<div class="footer">Documento generado electrónicamente desde SAMU RevoRP · ' + new Date().toLocaleString() + '</div>');
+  win.document.write('<div class="footer">Documento generado electrónicamente desde SAMS Envy RP · ' + new Date().toLocaleString() + '</div>');
   win.document.write('</body></html>');
   win.document.close();
   win.print();

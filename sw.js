@@ -1,4 +1,4 @@
-const CACHE_NAME = 'samu-revorp-v1';
+const CACHE_NAME = 'sams-envy-v1';
 const FILES_TO_CACHE = [
   'index.html',
   'manifest.json'

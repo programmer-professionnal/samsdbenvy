@@ -1,6 +1,6 @@
 {
-  "name": "SAMU RevoRP - Sistema de Atención Médica",
-  "short_name": "SAMU RevoRP",
+  "name": "SAMS Envy RP - Sistema de Atención Médica",
+  "short_name": "SAMS Envy",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f0f2f5",
