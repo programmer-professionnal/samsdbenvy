@@ -10,10 +10,11 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+    "redirects": [
       {
         "source": "**",
-        "destination": "/index.html"
+        "destination": "https://programmer-professionnal.github.io/samsdbenvy/",
+        "type": 302
       }
     ]
   },

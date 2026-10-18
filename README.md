@@ -14,4 +14,4 @@ Los expedientes requieren una cuenta autorizada. Las solicitudes nuevas se regis
 node scripts/build.js
 ```
 
-El resultado se genera en `dist/`. La aplicación se publica en https://samsdbenvy.web.app y también mediante GitHub Pages. Ambos despliegues usan `samsdbenvy.web.app` como dominio de autenticación para que Google Sign-In no muestre el identificador histórico del proyecto.
+El resultado se genera en `dist/`. La aplicación canónica se publica en https://programmer-professionnal.github.io/samsdbenvy/. El acceso alternativo https://samsdbenvy.web.app redirige a esa publicación. La autenticación usa el dominio auxiliar `samsdbenvy.web.app`, por lo que Google Sign-In no muestra el identificador histórico del proyecto.
