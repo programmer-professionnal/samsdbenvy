@@ -1,8 +1,20 @@
 {
   "rules": {
     "samuData": {
-      ".read": true,
-      ".write": true
+      ".read": "auth != null && root.child('access').child(auth.uid).child('active').val() === true",
+      ".write": "auth != null && root.child('access').child(auth.uid).child('active').val() === true"
+    },
+    "access": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('access').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && root.child('access').child(auth.uid).child('role').val() === 'admin'"
+      }
+    },
+    "accessRequests": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('access').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('access').child(auth.uid).child('role').val() === 'admin')"
+      }
     }
   }
 }

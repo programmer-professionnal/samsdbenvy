@@ -594,20 +594,10 @@ body { background: var(--bg); color: var(--text); }
 <!-- LOGIN -->
 <div class="login-container" id="loginContainer">
   <h2>&#x1fa7a; Acceso Médicos</h2>
-  <p class="subtitle">Ingrese sus credenciales para acceder al sistema</p>
-  <div class="form-group">
-    <label for="loginUser">Usuario</label>
-    <input type="text" id="loginUser" placeholder="Nombre de usuario" autocomplete="off">
-  </div>
-  <div class="form-group">
-    <label for="loginPass">Contraseña</label>
-    <input type="password" id="loginPass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')document.getElementById('btnLogin').click()">
-  </div>
-  <button class="btn-primary" id="btnLogin" onclick="doLogin()">Iniciar sesión</button>
+  <p class="subtitle">Acceso protegido mediante una cuenta de Google autorizada en Firebase</p>
+  <button class="btn-primary" id="btnLogin" onclick="doLogin()">Continuar con Google</button>
   <div class="login-error" id="loginError"></div>
-  <div class="login-footer">
-    <a onclick="showPublicSearch()">&#x1f50d; Buscar paciente (sin sesión)</a>
-  </div>
+  <div class="login-footer">Los expedientes ya no están disponibles sin autenticación.</div>
 </div>
 <script>
 (function(){
@@ -632,7 +622,7 @@ body { background: var(--bg); color: var(--text); }
         <button class="btn-search" onclick="searchPatients()">Buscar</button>
       </div>
       <button class="btn-add" onclick="openNewPatient()">+ Nuevo paciente</button>
-      <button class="btn-action" style="background:#1565c0;" onclick="showPublicSearch()">&#x1f50d; Búsqueda pública</button>
+      <button class="btn-action" style="background:#1565c0;" onclick="showPublicSearch()">&#x1f50d; Buscar pacientes</button>
       <button class="archive-toggle" id="archiveToggleBtn" onclick="toggleArchived()">&#x1f4c2; Archivados</button>
     </div>
     <div class="toolbar-row toolbar-buttons">
@@ -873,7 +863,7 @@ body { background: var(--bg); color: var(--text); }
       <button class="btn-primary" onclick="doPortalLogin()">Consultar expediente</button>
       <div class="login-error" id="portalError"></div>
       <div class="doctor-login-link" style="margin-top:20px;">
-        <a onclick="showLogin()">&#x1f512; Acceso para médicos</a> | <a onclick="showPublicSearch()">&#x1f50d; Búsqueda sin login</a>
+        <a onclick="showLogin()">&#x1f512; Volver al acceso seguro</a>
       </div>
     </div>
   </div>
@@ -903,6 +893,7 @@ body { background: var(--bg); color: var(--text); }
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
@@ -911,10 +902,6 @@ body { background: var(--bg); color: var(--text); }
 // Los valores reales se inyectan automáticamente mediante GitHub Actions.
 // Si ejecutas localmente, cambia 'null' por tu config de Firebase o se usará modo local.
 const FIREBASE_CONFIG = null;
-
-// ===== CREDENCIALES DE MÉDICOS (inyectadas por GitHub Actions) =====
-// En el repo solo aparece 'null'; los valores reales se inyectan via secrets.
-const DOCTORS_SEED = null;
 
 // ===== ICD-10 CODES =====
 var ICD10_CODES = [
@@ -949,6 +936,8 @@ const STORAGE_KEY = 'samu_ems_db';
 let dataCache = null;
 let firebaseReady = false;
 let firebaseRef = null;
+let firebaseAuth = null;
+let currentAccess = null;
 
 function initFirebase() {
   if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.databaseURL || FIREBASE_CONFIG.databaseURL.includes('tu-proyecto')) {
@@ -956,6 +945,7 @@ function initFirebase() {
   }
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
+    firebaseAuth = firebase.auth();
     firebaseRef = firebase.database().ref('samuData');
     firebaseReady = true;
     return true;
@@ -972,7 +962,6 @@ async function loadDataFromFirebase() {
     const data = snapshot.val();
     if (data) {
       dataCache = data;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       return true;
     }
   } catch (e) {
@@ -1000,13 +989,7 @@ function migrateData(obj) {
 
 function getData() {
   if (!dataCache) {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try { dataCache = JSON.parse(raw); } catch(e) {}
-    }
-    if (!dataCache) {
-      dataCache = { doctors: [], patients: [], nextPatientId: 1, nextDoctorId: 1, nextEmergencyId: 1 };
-    }
+    dataCache = { doctors: [], patients: [], nextPatientId: 1, nextDoctorId: 1, nextEmergencyId: 1 };
     migrateData(dataCache);
   }
   if (!dataCache.patients) dataCache.patients = [];
@@ -1021,7 +1004,10 @@ function getData() {
   }
   if (!dataCache.doctors) { dataCache.doctors = []; }
   else {
-    dataCache.doctors.forEach(d => { if (d.onDuty === undefined) d.onDuty = false; });
+    dataCache.doctors.forEach(d => {
+      if (d.onDuty === undefined) d.onDuty = false;
+      delete d.password;
+    });
     dataCache.doctors.forEach(d => { if (d.username === 'LVargas' && d.specialty !== 'Supervisor Jefe') d.specialty = 'Supervisor Jefe'; });
   }
   if (!dataCache.nextPatientId) dataCache.nextPatientId = 1;
@@ -1079,11 +1065,6 @@ function getData() {
 
 function saveData(data) {
   dataCache = data;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Error al guardar en localStorage:', e.message);
-  }
   if (firebaseReady && firebaseRef) {
     firebaseRef.set(data).catch(function(err) {
       console.warn('Error al guardar en Firebase:', err.message);
@@ -1108,37 +1089,73 @@ function addAuditLog(action, patientId) {
 var dataInitialized = false;
 
 async function initData() {
-  initFirebase();
-  const connected = await loadDataFromFirebase();
-  if (dataCache && dataCache.doctors && dataCache.doctors.length > 0) {
-    dataInitialized = true;
-    console.log(connected ? 'Firebase conectado - datos compartidos' : 'Modo local');
-    restoreSession();
+  localStorage.removeItem(STORAGE_KEY);
+  if (!initFirebase() || !firebaseAuth) {
+    document.getElementById('loginError').textContent = 'No se pudo iniciar la conexión segura con Firebase.';
     return;
   }
-  const data = getData();
-  if (data.doctors.length === 0) {
-    if (DOCTORS_SEED && Array.isArray(DOCTORS_SEED) && DOCTORS_SEED.length > 0) {
-      data.doctors = DOCTORS_SEED.slice();
-      data.nextDoctorId = Math.max(...DOCTORS_SEED.map(d => d.id), 0) + 1;
-    } else {
-      data.doctors.push(
-        { id: 1, username: 'LVargas', password: 'lucasvargas07', name: 'Dr. Lucas Vargas', specialty: 'Supervisor Jefe' },
-        { id: 2, username: 'ICortes', password: 'juanma02', name: 'Dr. Ivan Cortés', specialty: 'Emergencias' },
-        { id: 3, username: 'medico3', password: 'medico3', name: 'Dr. Rodríguez', specialty: 'Traumatología' }
-      );
-      data.nextDoctorId = 4;
-    }
-    saveData(data);
-  }
-  dataInitialized = true;
-  console.log(connected ? 'Firebase conectado - datos compartidos' : 'Modo local - datos solo en este navegador');
-  restoreSession();
+  firebaseAuth.onAuthStateChanged(handleAuthState);
 }
 
 // ===== AUTH =====
 let currentDoctor = null;
-const SESSION_KEY = 'samu_session';
+
+function isAdmin() {
+  return !!(currentAccess && currentAccess.role === 'admin');
+}
+
+async function handleAuthState(user) {
+  if (!user) {
+    dataCache = null;
+    currentDoctor = null;
+    currentAccess = null;
+    showLogin();
+    return;
+  }
+  const accessSnapshot = await firebase.database().ref('access/' + user.uid).once('value');
+  const access = accessSnapshot.val();
+  if (!access || access.active !== true) {
+    await firebase.database().ref('accessRequests/' + user.uid).set({
+      email: user.email || '',
+      name: user.displayName || '',
+      requestedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+    await firebaseAuth.signOut();
+    document.getElementById('loginError').textContent = 'Acceso pendiente de autorización por un administrador de SAMS.';
+    return;
+  }
+  currentAccess = access;
+  const connected = await loadDataFromFirebase();
+  if (!connected) {
+    await firebaseAuth.signOut();
+    document.getElementById('loginError').textContent = 'No fue posible cargar los datos autorizados.';
+    return;
+  }
+  const data = getData();
+  let doc = data.doctors.find(function(d) {
+    return d.authUid === user.uid || (access.doctorId && d.id === access.doctorId) ||
+      (d.email && user.email && d.email.toLowerCase() === user.email.toLowerCase());
+  });
+  if (!doc) {
+    doc = {
+      id: access.doctorId || ('auth-' + user.uid),
+      authUid: user.uid,
+      email: user.email || '',
+      username: access.username || (user.email ? user.email.split('@')[0] : 'usuario'),
+      name: access.name || user.displayName || 'Personal SAMS',
+      specialty: access.specialty || 'Medicina General',
+      onDuty: false
+    };
+    data.doctors.push(doc);
+  } else {
+    doc.authUid = user.uid;
+    doc.email = user.email || doc.email || '';
+    delete doc.password;
+  }
+  saveData(data);
+  dataInitialized = true;
+  setLoggedInUI(doc);
+}
 
 function setLoggedInUI(doc) {
   currentDoctor = doc;
@@ -1152,14 +1169,12 @@ function setLoggedInUI(doc) {
   document.getElementById('btnDarkMode').classList.remove('hidden');
   initDarkMode();
   requestNotifPermission();
-  document.getElementById('btnDoctorConfig').style.display = doc.username === 'LVargas' ? 'inline-block' : 'none';
+  document.getElementById('btnDoctorConfig').style.display = isAdmin() ? 'inline-block' : 'none';
   document.getElementById('btnBackToDashboard').classList.add('hidden');
   document.getElementById('btnBackFromEmerg').classList.add('hidden');
   document.getElementById('patientDetailView').classList.remove('active');
   document.getElementById('patientListView').style.display = 'block';
   document.getElementById('emergencySectionView').style.display = 'none';
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
   document.getElementById('loginError').textContent = '';
   if (!document.getElementById('patientFilterPanel').innerHTML) {
     document.getElementById('patientFilterPanel').innerHTML = getPatientFilterHtml();
@@ -1190,39 +1205,27 @@ function setLoggedInUI(doc) {
   }, 100);
 }
 
-function restoreSession() {
-  const raw = localStorage.getItem(SESSION_KEY);
-  if (!raw) return;
-  try {
-    const saved = JSON.parse(raw);
-    if (saved && saved.username) {
-      const data = getData();
-      const doc = data.doctors.find(d => d.username === saved.username);
-      if (doc) {
-        setLoggedInUI(doc);
-        return;
-      }
-    }
-  } catch (e) {}
-  localStorage.removeItem(SESSION_KEY);
-}
-
-function doLogin() {
-  const user = document.getElementById('loginUser').value.trim();
-  const pass = document.getElementById('loginPass').value.trim();
+async function doLogin() {
   const errEl = document.getElementById('loginError');
   errEl.textContent = '';
-  if (!user || !pass) { errEl.textContent = 'Ingrese usuario y contraseña.'; return; }
-  const data = getData();
-  const doc = data.doctors.find(d => d.username === user && d.password === pass);
-  if (!doc) { errEl.textContent = 'Credenciales inválidas.'; return; }
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ username: doc.username }));
-  setLoggedInUI(doc);
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await firebaseAuth.signInWithPopup(provider);
+  } catch (e) {
+    console.warn('Error de autenticación:', e.code || e.message);
+    errEl.textContent = e.code === 'auth/popup-blocked'
+      ? 'El navegador bloqueó la ventana de acceso. Habilita ventanas emergentes e inténtalo de nuevo.'
+      : 'No se pudo iniciar sesión con Google.';
+  }
 }
 
-function logout() {
-  localStorage.removeItem(SESSION_KEY);
+async function logout() {
+  localStorage.removeItem(STORAGE_KEY);
+  if (firebaseAuth) await firebaseAuth.signOut();
+  dataCache = null;
   currentDoctor = null;
+  currentAccess = null;
   document.getElementById('loginContainer').classList.remove('hidden');
   document.getElementById('dashboardContainer').classList.add('hidden');
   document.getElementById('publicContainer').classList.add('hidden');
@@ -1235,6 +1238,11 @@ function logout() {
 }
 
 function showPublicSearch() {
+  if (!currentDoctor) {
+    document.getElementById('loginError').textContent = 'Debes iniciar sesión para consultar expedientes.';
+    showLogin();
+    return;
+  }
   document.getElementById('portalContainer').classList.add('hidden');
   document.getElementById('publicContainer').classList.remove('hidden');
   document.getElementById('loginContainer').classList.add('hidden');
@@ -1263,7 +1271,6 @@ function showLogin() {
   document.getElementById('btnNotifications').classList.add('hidden');
   document.getElementById('btnDarkMode').classList.add('hidden');
   document.getElementById('notifBadge').classList.add('hidden');
-  currentDoctor = null;
 }
 
 // ===== PATIENTS LIST =====
@@ -1298,7 +1305,7 @@ function restorePatient(id) {
 }
 
 function deletePatient(id) {
-  if (!currentDoctor || currentDoctor.username !== 'LVargas') { alert('Solo el Dr. Lucas Vargas puede eliminar expedientes definitivamente.'); return; }
+  if (!isAdmin()) { alert('Solo un administrador puede eliminar expedientes definitivamente.'); return; }
   if (!confirm('¿Eliminar PERMANENTEMENTE este expediente? Esta acción no se puede deshacer.')) return;
   const data = getData();
   const p = data.patients.find(x => x.id === id);
@@ -2590,7 +2597,7 @@ function showProtocols(onConfirm) {
   var needsConfirm = typeof onConfirm === 'function';
   if (needsConfirm && !data.protocolConfirmations) data.protocolConfirmations = [];
   if (needsConfirm && !data.lastProtocolUpdate) data.lastProtocolUpdate = new Date().toISOString();
-  var editable = currentDoctor && currentDoctor.username === 'LVargas';
+  var editable = isAdmin();
   var html = '<div class="protocol-card prot-rojo"><h4>&#128308; Rojo · Crítico</h4><p>' + escHtml(data.protocols.rojo) + '</p></div>' +
     '<div class="protocol-card prot-amarillo"><h4>&#128993; Amarillo · Moderado</h4><p>' + escHtml(data.protocols.amarillo) + '</p></div>' +
     '<div class="protocol-card prot-verde"><h4>&#128994; Verde · Leve</h4><p>' + escHtml(data.protocols.verde) + '</p></div>';
@@ -5603,7 +5610,7 @@ function renderPatientList(patients) {
   var html = '<table><thead><tr><th>Paciente</th><th>DNI</th><th>Teléfono</th><th>Alergias</th><th>Acciones</th></tr></thead><tbody>';
   pageItems.forEach(function(p) {
     var archiveClass = p.archived ? 'archived-row' : '';
-    var showArchive = currentDoctor && currentDoctor.username === 'LVargas';
+    var showArchive = isAdmin();
     html += '<tr class="' + archiveClass + '"><td><strong>' + escHtml(p.firstName + ' ' + p.lastName) + '</strong></td>' +
       '<td>' + escHtml(p.citizenNumber) + '</td>' +
       '<td>' + escHtml(p.phone || '-') + '</td>' +
@@ -5823,7 +5830,7 @@ document.addEventListener('keydown', function(e) {
 
 // ===== DOCTOR CONFIG =====
 function toggleDuty(docId) {
-  if (!currentDoctor || currentDoctor.username !== 'LVargas') { alert('Solo el Dr. Lucas Vargas puede cambiar turnos.'); return; }
+  if (!isAdmin()) { alert('Solo un administrador puede cambiar turnos.'); return; }
   const data = getData();
   const d = data.doctors.find(x => x.id === docId);
   if (d) { d.onDuty = !d.onDuty; addAuditLog('Turno de ' + d.name + ': ' + (d.onDuty ? 'de guardia' : 'fuera de servicio')); }
@@ -5832,7 +5839,7 @@ function toggleDuty(docId) {
 }
 
 function showDoctorConfig() {
-  if (!currentDoctor || currentDoctor.username !== 'LVargas') { alert('Solo el Dr. Lucas Vargas puede gestionar médicos.'); return; }
+  if (!isAdmin()) { alert('Solo un administrador puede gestionar médicos.'); return; }
   const data = getData();
   let listHtml = '';
   data.doctors.forEach(d => {
@@ -5847,25 +5854,26 @@ function showDoctorConfig() {
   const html =
     '<div class="config-doctors"><h4 style="margin-bottom:10px;">Médicos registrados</h4>' + listHtml + '</div>' +
     '<hr style="margin:20px 0;border:none;border-top:1px solid #eee;">' +
-    '<h4 style="margin-bottom:12px;">Añadir nuevo médico</h4>' +
+    '<h4 style="margin-bottom:12px;">Añadir perfil médico</h4>' +
     '<div class="form-group"><label>Nombre completo</label><input type="text" id="fNewDocName" placeholder="Ej: Dr. Pérez"></div>' +
     '<div class="form-group"><label>Usuario</label><input type="text" id="fNewDocUser" placeholder="Ej: dr_perez"></div>' +
-    '<div class="form-group"><label>Contraseña</label><input type="text" id="fNewDocPass" placeholder="Contraseña"></div>' +
+    '<div class="form-group"><label>Correo de Google</label><input type="email" id="fNewDocEmail" placeholder="medico@ejemplo.com"></div>' +
     '<div class="form-group"><label>Especialidad</label><input type="text" id="fNewDocSpec" placeholder="Ej: Supervisor Jefe" value="Medicina General"></div>';
   openModal('Gestión de médicos', html, () => addNewDoctor());
   document.getElementById('modalSaveBtn').textContent = 'Añadir médico';
 }
 
 function addNewDoctor() {
-  if (!currentDoctor || currentDoctor.username !== 'LVargas') { alert('Solo el Dr. Lucas Vargas puede añadir médicos.'); return; }
+  if (!isAdmin()) { alert('Solo un administrador puede añadir médicos.'); return; }
   const name = document.getElementById('fNewDocName').value.trim();
   const username = document.getElementById('fNewDocUser').value.trim();
-  const password = document.getElementById('fNewDocPass').value.trim();
+  const email = document.getElementById('fNewDocEmail').value.trim().toLowerCase();
   const specialty = document.getElementById('fNewDocSpec').value.trim();
-  if (!name || !username || !password) { alert('Todos los campos son obligatorios.'); return; }
+  if (!name || !username || !email) { alert('Nombre, usuario y correo son obligatorios.'); return; }
   const data = getData();
   if (data.doctors.find(d => d.username === username)) { alert('Ese nombre de usuario ya existe.'); return; }
-  data.doctors.push({ id: data.nextDoctorId++, username, password, name, specialty, onDuty: false });
+  if (data.doctors.find(d => d.email && d.email.toLowerCase() === email)) { alert('Ese correo ya está registrado.'); return; }
+  data.doctors.push({ id: data.nextDoctorId++, username, email, name, specialty, onDuty: false });
   addAuditLog('Médico añadido: ' + name + ' (@' + username + ')');
   saveData(data);
   document.getElementById('modalSaveBtn').textContent = 'Añadir médico';
@@ -5873,7 +5881,7 @@ function addNewDoctor() {
 }
 
 function deleteDoctor(id) {
-  if (!currentDoctor || currentDoctor.username !== 'LVargas') { alert('Solo el Dr. Lucas Vargas puede eliminar médicos.'); return; }
+  if (!isAdmin()) { alert('Solo un administrador puede eliminar médicos.'); return; }
   const data = getData();
   if (data.doctors.length <= 1) { alert('Debe haber al menos un médico.'); return; }
   if (currentDoctor && currentDoctor.id === id) { alert('No puede eliminar su propia cuenta mientras está logueado.'); return; }
@@ -6536,7 +6544,7 @@ function renderScales() {
 function showSystemAnnouncements() {
   const data = getData();
   if (!data.announcements) data.announcements = [];
-  var editable = currentDoctor && currentDoctor.username === 'LVargas';
+  var editable = isAdmin();
   var listHtml = data.announcements.length === 0 ? '<div class="no-data">No hay avisos.</div>' : '';
   data.announcements.slice().reverse().forEach(function(a) {
     listHtml += '<div class="lab-card"><div class="lab-date">' + escHtml(a.date) + ' | ' + escHtml(a.author) + '</div><div class="lab-test"><strong>' + escHtml(a.title) + '</strong></div><div style="font-size:0.85em;color:var(--text-secondary);margin:4px 0;">' + escHtml(a.message) + '</div></div>';
@@ -6867,28 +6875,6 @@ window.addEventListener('error', function(e) {
 });
 
 // ===== CROSS-TAB SYNC =====
-window.addEventListener('storage', function(e) {
-  if (e.key === SESSION_KEY) {
-    if (!e.newValue && currentDoctor) {
-      logout();
-    } else if (e.newValue && !currentDoctor) {
-      restoreSession();
-    }
-  }
-  if (e.key === STORAGE_KEY && e.newValue) {
-    try {
-      dataCache = JSON.parse(e.newValue);
-      if (currentDoctor) {
-        if (document.getElementById('dashboardContainer') && !document.getElementById('dashboardContainer').classList.contains('hidden')) {
-          searchPatients();
-          updateNotifBadge();
-        }
-        if (typeof renderRecentAndFavs === 'function') renderRecentAndFavs();
-      }
-    } catch(ex) {}
-  }
-});
-
 // ===== INIT =====
 initData().catch(function(e) { console.error('Error en inicialización:', e); });
 

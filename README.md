@@ -4,7 +4,9 @@ Sistema de Atención Médica de San Andreas Medical Services (SAMS) para Envy RP
 
 ## Compatibilidad de datos
 
-Los identificadores internos heredados (`samu_ems_db`, `samuData`, `samu_session` y otras claves `samu_*`) se mantienen deliberadamente para conservar los datos locales y la compatibilidad con Firebase. La identidad visible, los documentos, las copias de seguridad nuevas y la caché PWA usan SAMS Envy RP.
+La ruta interna `samuData` se mantiene para conservar la base existente. El acceso utiliza Firebase Authentication con Google; las contraseñas no se almacenan en el repositorio, el HTML, el navegador ni Realtime Database.
+
+Los expedientes requieren una cuenta autorizada. Las solicitudes nuevas se registran en `accessRequests` y deben aprobarse asignando un registro activo en `access/<uid>`.
 
 ## Construcción
 

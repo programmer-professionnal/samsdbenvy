@@ -4,3 +4,5 @@ package-lock.json
 server.js
 data.json
 dist/
+firebase-debug.log
+auth-users-export.json

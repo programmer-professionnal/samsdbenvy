@@ -1,0 +1,16 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "SAMS Envy RP",
+        "supportEmail": "xautumx7@gmail.com",
+        "authorizedRedirectUris": [
+          "https://programmer-professionnal.github.io/samsdbenvy/"
+        ]
+      }
+    }
+  }
+}
