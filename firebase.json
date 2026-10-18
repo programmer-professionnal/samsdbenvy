@@ -24,6 +24,7 @@
         "supportEmail": "xautumx7@gmail.com",
         "authorizedRedirectUris": [
           "https://samsdbenvy.web.app",
+          "https://samsdbenvy.web.app/",
           "https://samsdbenvy.web.app/__/auth/handler"
         ]
       }
