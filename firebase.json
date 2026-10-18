@@ -20,6 +20,7 @@
   },
   "auth": {
     "providers": {
+      "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "SAMS Envy RP",
         "supportEmail": "xautumx7@gmail.com",

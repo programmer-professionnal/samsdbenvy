@@ -594,10 +594,19 @@ body { background: var(--bg); color: var(--text); }
 <!-- LOGIN -->
 <div class="login-container" id="loginContainer">
   <h2>&#x1fa7a; Acceso Médicos</h2>
-  <p class="subtitle">Acceso protegido mediante una cuenta de Google autorizada en Firebase</p>
+  <p class="subtitle">Acceso protegido con Google o correo y contraseña</p>
   <button class="btn-primary" id="btnLogin" onclick="doLogin()">Continuar con Google</button>
+  <div style="display:flex;align-items:center;gap:10px;margin:18px 0;color:#999;font-size:0.8em;"><span style="height:1px;background:#ddd;flex:1;"></span>o<span style="height:1px;background:#ddd;flex:1;"></span></div>
+  <div class="form-group" style="text-align:left;"><label>Nombre completo (solo para crear cuenta)</label><input type="text" id="loginName" autocomplete="name" placeholder="Dra. Ana Pérez"></div>
+  <div class="form-group" style="text-align:left;"><label>Correo</label><input type="email" id="loginEmail" autocomplete="username" placeholder="medico@ejemplo.com"></div>
+  <div class="form-group" style="text-align:left;"><label>Contraseña</label><input type="password" id="loginPassword" autocomplete="current-password" minlength="8" placeholder="Mínimo 8 caracteres"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn-primary" onclick="doEmailLogin()">Iniciar con correo</button>
+    <button class="btn-cancel" onclick="createEmailAccount()">Crear cuenta</button>
+  </div>
+  <button onclick="resetEmailPassword()" style="border:0;background:none;color:#1565c0;cursor:pointer;margin-top:12px;">Olvidé mi contraseña</button>
   <div class="login-error" id="loginError"></div>
-  <div class="login-footer">Los expedientes ya no están disponibles sin autenticación.</div>
+  <div class="login-footer">Las cuentas nuevas requieren aprobación de un administrador.</div>
 </div>
 <script>
 (function(){
@@ -938,6 +947,7 @@ let firebaseReady = false;
 let firebaseRef = null;
 let firebaseAuth = null;
 let currentAccess = null;
+let pendingRegistrationName = '';
 
 function initFirebase() {
   if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.databaseURL || FIREBASE_CONFIG.databaseURL.includes('tu-proyecto')) {
@@ -1117,9 +1127,11 @@ async function handleAuthState(user) {
   if (!access || access.active !== true) {
     await firebase.database().ref('accessRequests/' + user.uid).set({
       email: user.email || '',
-      name: user.displayName || '',
+      name: pendingRegistrationName || user.displayName || '',
+      provider: user.providerData && user.providerData[0] ? user.providerData[0].providerId : '',
       requestedAt: firebase.database.ServerValue.TIMESTAMP
     });
+    pendingRegistrationName = '';
     await firebaseAuth.signOut();
     document.getElementById('loginError').textContent = 'Acceso pendiente de autorización por un administrador de SAMS.';
     return;
@@ -1217,6 +1229,72 @@ async function doLogin() {
     errEl.textContent = e.code === 'auth/popup-blocked'
       ? 'El navegador bloqueó la ventana de acceso. Habilita ventanas emergentes e inténtalo de nuevo.'
       : 'No se pudo iniciar sesión con Google.';
+  }
+}
+
+function getEmailCredentials() {
+  return {
+    name: document.getElementById('loginName').value.trim(),
+    email: document.getElementById('loginEmail').value.trim().toLowerCase(),
+    password: document.getElementById('loginPassword').value
+  };
+}
+
+function showAuthError(error) {
+  const messages = {
+    'auth/email-already-in-use': 'Ese correo ya tiene una cuenta. Inicia sesión o restablece la contraseña.',
+    'auth/invalid-email': 'El correo no es válido.',
+    'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+    'auth/user-not-found': 'No existe una cuenta con ese correo.',
+    'auth/wrong-password': 'Correo o contraseña incorrectos.',
+    'auth/weak-password': 'Usa una contraseña de al menos 8 caracteres.',
+    'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.'
+  };
+  document.getElementById('loginError').textContent = messages[error.code] || 'No se pudo completar la autenticación.';
+}
+
+async function doEmailLogin() {
+  const credentials = getEmailCredentials();
+  document.getElementById('loginError').textContent = '';
+  if (!credentials.email || !credentials.password) {
+    document.getElementById('loginError').textContent = 'Escribe tu correo y contraseña.';
+    return;
+  }
+  try {
+    await firebaseAuth.signInWithEmailAndPassword(credentials.email, credentials.password);
+  } catch (error) {
+    showAuthError(error);
+  }
+}
+
+async function createEmailAccount() {
+  const credentials = getEmailCredentials();
+  document.getElementById('loginError').textContent = '';
+  if (!credentials.name || !credentials.email || credentials.password.length < 8) {
+    document.getElementById('loginError').textContent = 'Para crear una cuenta indica nombre, correo y una contraseña de al menos 8 caracteres.';
+    return;
+  }
+  try {
+    pendingRegistrationName = credentials.name;
+    await firebaseAuth.createUserWithEmailAndPassword(credentials.email, credentials.password);
+    document.getElementById('loginError').textContent = 'Cuenta creada. Tu acceso queda pendiente de aprobación.';
+  } catch (error) {
+    pendingRegistrationName = '';
+    showAuthError(error);
+  }
+}
+
+async function resetEmailPassword() {
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  if (!email) {
+    document.getElementById('loginError').textContent = 'Escribe primero el correo de la cuenta.';
+    return;
+  }
+  try {
+    await firebaseAuth.sendPasswordResetEmail(email);
+    document.getElementById('loginError').textContent = 'Enviamos un enlace para restablecer la contraseña.';
+  } catch (error) {
+    showAuthError(error);
   }
 }
 
@@ -5838,9 +5916,39 @@ function toggleDuty(docId) {
   showDoctorConfig();
 }
 
-function showDoctorConfig() {
+async function showDoctorConfig() {
   if (!isAdmin()) { alert('Solo un administrador puede gestionar médicos.'); return; }
   const data = getData();
+  let requests = {};
+  try {
+    const requestSnapshot = await firebase.database().ref('accessRequests').once('value');
+    requests = requestSnapshot.val() || {};
+  } catch (error) {
+    console.warn('No fue posible cargar solicitudes de acceso:', error.message);
+  }
+  let pendingHtml = '';
+  const pendingEntries = Object.entries(requests);
+  if (!pendingEntries.length) {
+    pendingHtml = '<p style="color:#777;font-size:0.86em;">No hay solicitudes pendientes.</p>';
+  } else {
+    pendingEntries.forEach(function(entry) {
+      const uid = entry[0];
+      const request = entry[1] || {};
+      const matchingDoctor = data.doctors.find(function(d) {
+        return d.email && request.email && d.email.toLowerCase() === request.email.toLowerCase();
+      });
+      let options = '<option value="">Selecciona un perfil médico</option>';
+      data.doctors.forEach(function(d) {
+        options += '<option value="' + escAttr(d.id) + '"' + (matchingDoctor && matchingDoctor.id === d.id ? ' selected' : '') + '>' + escHtml(d.name) + ' (@' + escHtml(d.username) + ')</option>';
+      });
+      pendingHtml += '<div class="doctor-item" style="display:block;">' +
+        '<div class="doc-info"><strong>' + escHtml(request.name || 'Cuenta nueva') + '</strong><br><span>' + escHtml(request.email || 'Sin correo') + ' · ' + escHtml(request.provider === 'password' ? 'Correo/contraseña' : 'Google') + '</span></div>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;"><select id="pendingDoc_' + escAttr(uid) + '" style="flex:1;min-width:210px;padding:8px;border:1px solid #ddd;border-radius:5px;">' + options + '</select>' +
+        '<button class="btn-save" onclick="approveAccessRequest(\'' + escAttr(uid) + '\')">Autorizar</button>' +
+        '<button class="btn-small btn-small-delete" onclick="rejectAccessRequest(\'' + escAttr(uid) + '\')">Descartar</button></div>' +
+        (!matchingDoctor ? '<p style="font-size:0.78em;color:#c62828;margin-top:6px;">Crea abajo un perfil con este mismo correo o selecciona uno existente.</p>' : '') + '</div>';
+    });
+  }
   let listHtml = '';
   data.doctors.forEach(d => {
     const dutyClass = d.onDuty ? 'on-duty' : 'off-duty';
@@ -5852,15 +5960,63 @@ function showDoctorConfig() {
       '<button class="btn-delete-doc" onclick="deleteDoctor(' + d.id + ')" title="Eliminar médico">&#10005;</button></div></div>';
   });
   const html =
+    '<div class="config-doctors"><h4 style="margin-bottom:10px;">Solicitudes pendientes</h4>' + pendingHtml + '</div>' +
+    '<hr style="margin:20px 0;border:none;border-top:1px solid #eee;">' +
     '<div class="config-doctors"><h4 style="margin-bottom:10px;">Médicos registrados</h4>' + listHtml + '</div>' +
     '<hr style="margin:20px 0;border:none;border-top:1px solid #eee;">' +
     '<h4 style="margin-bottom:12px;">Añadir perfil médico</h4>' +
     '<div class="form-group"><label>Nombre completo</label><input type="text" id="fNewDocName" placeholder="Ej: Dr. Pérez"></div>' +
     '<div class="form-group"><label>Usuario</label><input type="text" id="fNewDocUser" placeholder="Ej: dr_perez"></div>' +
-    '<div class="form-group"><label>Correo de Google</label><input type="email" id="fNewDocEmail" placeholder="medico@ejemplo.com"></div>' +
+    '<div class="form-group"><label>Correo de acceso</label><input type="email" id="fNewDocEmail" placeholder="medico@ejemplo.com"></div>' +
     '<div class="form-group"><label>Especialidad</label><input type="text" id="fNewDocSpec" placeholder="Ej: Supervisor Jefe" value="Medicina General"></div>';
   openModal('Gestión de médicos', html, () => addNewDoctor());
   document.getElementById('modalSaveBtn').textContent = 'Añadir médico';
+}
+
+async function approveAccessRequest(uid) {
+  if (!isAdmin()) { alert('Solo un administrador puede autorizar cuentas.'); return; }
+  const selector = document.getElementById('pendingDoc_' + uid);
+  const doctorId = selector ? selector.value : '';
+  if (!doctorId) { alert('Selecciona el perfil médico que corresponde a esta cuenta.'); return; }
+  const data = getData();
+  const doctor = data.doctors.find(function(d) { return String(d.id) === String(doctorId); });
+  if (!doctor) { alert('No se encontró el perfil médico seleccionado.'); return; }
+  try {
+    const requestSnapshot = await firebase.database().ref('accessRequests/' + uid).once('value');
+    const request = requestSnapshot.val() || {};
+    doctor.authUid = uid;
+    doctor.email = request.email || doctor.email || '';
+    addAuditLog('Cuenta autorizada para ' + doctor.name);
+    dataCache = data;
+    await firebaseRef.set(data);
+    const updates = {};
+    updates['access/' + uid] = {
+      active: true,
+      role: 'doctor',
+      doctorId: doctor.id,
+      username: doctor.username,
+      name: doctor.name,
+      specialty: doctor.specialty || 'Medicina General'
+    };
+    updates['accessRequests/' + uid] = null;
+    await firebase.database().ref().update(updates);
+    showToast('Cuenta autorizada para ' + doctor.name);
+    await showDoctorConfig();
+  } catch (error) {
+    console.warn('Error al autorizar cuenta:', error.message);
+    alert('No fue posible autorizar la cuenta.');
+  }
+}
+
+async function rejectAccessRequest(uid) {
+  if (!isAdmin()) { alert('Solo un administrador puede descartar solicitudes.'); return; }
+  if (!confirm('¿Descartar esta solicitud de acceso?')) return;
+  try {
+    await firebase.database().ref('accessRequests/' + uid).remove();
+    await showDoctorConfig();
+  } catch (error) {
+    alert('No fue posible descartar la solicitud.');
+  }
 }
 
 function addNewDoctor() {

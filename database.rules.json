@@ -11,6 +11,7 @@
       }
     },
     "accessRequests": {
+      ".read": "auth != null && root.child('access').child(auth.uid).child('role').val() === 'admin'",
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('access').child(auth.uid).child('role').val() === 'admin')",
         ".write": "auth != null && (auth.uid === $uid || root.child('access').child(auth.uid).child('role').val() === 'admin')"
