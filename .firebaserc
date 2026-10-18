@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "emsdbrevo"
+  },
+  "targets": {
+    "emsdbrevo": {
+      "hosting": {
+        "sams": [
+          "samsdbenvy"
+        ]
+      }
+    }
   }
 }

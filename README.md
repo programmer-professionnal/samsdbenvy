@@ -14,4 +14,4 @@ Los expedientes requieren una cuenta autorizada. Las solicitudes nuevas se regis
 node scripts/build.js
 ```
 
-El resultado se genera en `dist/`. La publicación mediante GitHub Pages utiliza las variables y secretos de Firebase configurados en el repositorio.
+El resultado se genera en `dist/`. La aplicación se publica en https://samsdbenvy.web.app y también mediante GitHub Pages. Ambos despliegues usan `samsdbenvy.web.app` como dominio de autenticación para que Google Sign-In no muestre el identificador histórico del proyecto.
